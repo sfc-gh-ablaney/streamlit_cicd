@@ -42,4 +42,4 @@ jobs:
               shell: bash
               run: |
                 snow streamlit deploy --replace
-              working-directory: ./access_requestor
+              working-directory: access_requestor
