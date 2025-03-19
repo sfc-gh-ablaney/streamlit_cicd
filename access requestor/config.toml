@@ -1,0 +1,7 @@
+[connections.snowflake]
+account = "SFPSCOGS-BLANEY_AZ_RPCT"
+user = "ablaney"
+role = "SYSADMIN"
+database = "STREAMLIT_APPS"
+schema = "APPS"
+warehouse = "SNOW_WH"
