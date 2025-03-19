@@ -1,14 +1,15 @@
 definition_version: 2
 entities:
-  my_streamlit:
+  access_requestor:
     type: streamlit
-    identifier: streamlit_app
+    identifier: access_requestor
     stage: streamlit_stage
     title: Access Requestor
     query_warehouse: SNOW_WH
     main_file: streamlit_app.py
     pages_dir: pages/
     artifacts:
+      - streamlit_app.py
       - common/queries.py
       - common/ctas.py
       - environment.yml
