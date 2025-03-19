@@ -67,12 +67,10 @@ user = get_user()
 st.write("Request for User: " +user)
 
 df_roles = get_access_roles(session, sf_database, sf_schema)
+
 role_requested = st.selectbox('Role Requested', df_roles["ROLE_NAME"])
-
 mins_requested = st.number_input("Time Length Requested (minutes)",5,120, step=5, value=60)
-
 request_reason = st.text_area('Enter request reason')
-
 submit_request = st.button('Submit Request')
 
 if submit_request:
@@ -81,7 +79,7 @@ if submit_request:
 
 st.subheader('Requests from user - last 30 days')
 df_open_requests = get_open_requests_for_user(session, sf_database, sf_schema, user)
-df_open_requests[["REQUESTED_ROLE_NAME" ,
+st.dataframe(df_open_requests[["REQUESTED_ROLE_NAME" ,
 "ROLE_REQUESTED_REASON" ,
 "REQUESTED_TIME_PERIOD_MINS" ,
 "REQUESTED_START_DT" ,
@@ -89,4 +87,4 @@ df_open_requests[["REQUESTED_ROLE_NAME" ,
 "REQUEST_REVIEWED_BY" ,
 "REQUEST_RESULT" ,
 "REQUEST_REVIEWED_TS" ,
-"REQUEST_GRANT_TS"]]
+"REQUEST_GRANT_TS"]], hide_index=True,)
