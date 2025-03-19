@@ -1,3 +1,5 @@
+default_connection_name = "snowflake"
+
 [connections.snowflake]
 account = "SFPSCOGS-BLANEY_AZ_RPCT"
 user = "ablaney"
