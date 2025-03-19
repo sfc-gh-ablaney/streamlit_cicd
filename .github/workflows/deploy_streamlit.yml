@@ -1,0 +1,44 @@
+name: Deploy via Snowflake CLI
+
+on:
+    push:
+        branches:
+        - main
+
+env:
+    PYTHON_VERSION: '3.10'
+
+jobs:
+    build-and-deploy:
+        runs-on: ubuntu-latest
+        environment: dev
+        steps:
+            # Checks out your repository under $GITHUB_WORKSPACE, so your workflow can access it
+            - name: 'Checkout GitHub Action'
+              uses: actions/checkout@v3
+
+            - name: Install Python
+              uses: actions/setup-python@v4
+              with:
+                 python-version: ${{ env.PYTHON_VERSION }}
+
+            - name: 'Install Snowflake CLI'
+              shell: bash
+              run: |
+                python -m pip install --upgrade pip
+                pip install snowflake-cli
+
+            - name: 'Create config'
+              shell: bash
+              env:
+                SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD }}
+              run: |
+                mkdir -p ~/.snowflake
+                cp config.toml ~/.snowflake/config.toml
+                echo "password = \"$SNOWFLAKE_PASSWORD\"" >> ~/.snowflake/config.toml
+                chmod 0600 ~/.snowflake/config.toml
+
+            - name: 'Deploy the Streamlit app'
+              shell: bash
+              run: |
+                snow streamlit deploy --replace
