@@ -13,3 +13,4 @@ entities:
       - common/queries.py
       - common/ctas.py
       - environment.yml
+      - pages/access_approvals.py
