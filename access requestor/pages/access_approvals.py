@@ -24,10 +24,36 @@ def get_open_requests(_session, database, schema):
     try:
         table_meta_sql = f"""SELECT * FROM {database}.{schema}.ST_AR_ACCESS_REQUEST_LOG 
                             WHERE REQUEST_RESULT IS  NULL"""
+        
         table_meta_df = _session.sql(table_meta_sql).to_pandas()
         return table_meta_df
     except Exception as e:
         st.sidebar.error("Sorry, An error occcured in get_access_roles(): " + str(e))
+
+def update_decision(_session, user, database, schema, id, decision):
+    try:
+        
+        table_meta_sql = f"""UPDATE {database}.{schema}.ST_AR_ACCESS_REQUEST_LOG 
+                                SET
+                                REQUEST_REVIEWED_BY = '{user}',
+                                REQUEST_RESULT = '{decision}',
+                                REQUEST_REVIEWED_TS = CURRENT_TIMESTAMP(),
+                                UPDATED_TS = CURRENT_TIMESTAMP(),
+                                UPDATED_BY = '{user}'
+                                WHERE ID = '{id}';"""
+        table_meta_df = _session.sql(table_meta_sql).collect()
+        return table_meta_df
+    except Exception as e:
+        st.sidebar.error("Sorry, An error occcured in get_access_roles(): " + str(e))
+
+def grant_access(_session, database, schema, id):
+    try:
+        call_proc_sql = f"""CALL {database}.{schema}.ACCESS_GRANTER({id});"""
+        result = _session.sql(call_proc_sql).collect()
+
+        return result
+    except Exception as e:
+        st.sidebar.error("Sorry, An error occcured in grant_access(): " + str(e))
 
 
 ##snowflake connection info. This will get read in from the values submitted on the homepage
@@ -43,9 +69,6 @@ except Exception as e:
 sf_database = session.get_current_database()
 sf_schema = session.get_current_schema()
 
-# sf_database
-# sf_schema
-
 ##add some markdown to the page with a desc
 st.header("Access Approvals")
 st.write('Please select the row you want to approve/decline:')
@@ -54,38 +77,43 @@ user = get_user()
 
 
 df_open_requests = get_open_requests(session, sf_database, sf_schema)
-df_cols = df_open_requests[["REQUESTED_ROLE_NAME" ,
-"ROLE_REQUESTED_REASON" ,
-"REQUESTED_TIME_PERIOD_MINS" ,
-"REQUESTED_START_DT" ,
-"REQUESTED_END_DT" ,
-"REQUEST_REVIEWED_BY" ,
-"REQUEST_RESULT" ,
-"REQUEST_REVIEWED_TS" ,
-"REQUEST_GRANT_TS"]]
+
+df_col_list = list(df_open_requests)
+df_col_list.remove("ID")
+df_col_list.remove("CREATED_TS")
+df_col_list.remove("CREATED_BY")
+df_col_list.remove("UPDATED_TS")
+df_col_list.remove("UPDATED_BY")
+
 
 
 event = st.dataframe(
-        df_cols,
+        df_open_requests,
         use_container_width=True,
         hide_index=True,
         on_select="rerun",
-        selection_mode="multi-row",
+        selection_mode="single-row",
+        column_order=df_col_list
     )
 
-st.header("Selected requests")
+# st.header("Selected requests")
 request = event.selection.rows
-filtered_df = df_cols.iloc[request]
-st.dataframe(
-    filtered_df,
-    hide_index=True,
-    use_container_width=True,
-)
+filtered_df = df_open_requests.iloc[request]
+# st.dataframe(
+#     filtered_df,
+#     hide_index=True,
+#     use_container_width=True,
+#     column_order=df_col_list,
+# )
 
 options = ["Approve", "Decline"]
-selection = st.selectbox('Decision', options)
+decision = st.selectbox('Decision', options)
 
 submit = st.button('Submit')
 
 if submit:
-     st.write('')
+    update_decision(session, user, sf_database, sf_schema, filtered_df.iloc[0]["ID"], decision)
+    if decision == 'Approve':
+        grant_access(session, sf_database, sf_schema, filtered_df.iloc[0]["ID"])
+    # st.rerun()
+     

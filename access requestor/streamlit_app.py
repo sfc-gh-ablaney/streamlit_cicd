@@ -37,12 +37,24 @@ def get_open_requests_for_user(_session, database, schema, user):
     try:
         table_meta_sql = f"""SELECT * FROM {database}.{schema}.ST_AR_ACCESS_REQUEST_LOG 
                             WHERE REQUESTOR_USER_NAME = '{user}'  
-                            AND CREATED_TS >= dateadd(day, -30, current_date())"""
+                            AND CREATED_TS >= dateadd(day, -30, current_date())
+                            ORDER BY CREATED_TS DESC"""
         table_meta_df = _session.sql(table_meta_sql).to_pandas()
         return table_meta_df
     except Exception as e:
         st.sidebar.error("Sorry, An error occcured in get_access_roles(): " + str(e))
 
+def email_requestor():
+    try:
+        send_email_sql = F"""   CALL SYSTEM$SEND_EMAIL(
+            'email_int',
+            'andy.blaney@snowflake.com',
+            'Access to Snowflake Requested',
+            'Please log in here to review access request to Snowflake'
+)           ;  """
+
+    except Exception as e:
+        st.sidebar.error("Sorry, An error occcured in email_requestor(): " + str(e))
 
 ##snowflake connection info. This will get read in from the values submitted on the homepage
 try:
@@ -50,8 +62,6 @@ try:
     #open the connection
 except Exception as e:
         st.error("Connection Failed.  Please try again! The pages will not work unless a successfull connection is made" + '\n' + '\n' + "error: " + str(e))
-
-
 
 
 sf_database = session.get_current_database()
@@ -76,15 +86,15 @@ submit_request = st.button('Submit Request')
 if submit_request:
      insert_request(session, sf_database, sf_schema, user, role_requested, mins_requested, request_reason)
      st.success('Request Submitted')
+     email_requestor()
 
 st.subheader('Requests from user - last 30 days')
 df_open_requests = get_open_requests_for_user(session, sf_database, sf_schema, user)
-st.dataframe(df_open_requests[["REQUESTED_ROLE_NAME" ,
-"ROLE_REQUESTED_REASON" ,
-"REQUESTED_TIME_PERIOD_MINS" ,
-"REQUESTED_START_DT" ,
-"REQUESTED_END_DT" ,
-"REQUEST_REVIEWED_BY" ,
-"REQUEST_RESULT" ,
-"REQUEST_REVIEWED_TS" ,
-"REQUEST_GRANT_TS"]], hide_index=True,)
+df_col_list = list(df_open_requests)
+df_col_list.remove("ID")
+df_col_list.remove("CREATED_TS")
+df_col_list.remove("CREATED_BY")
+df_col_list.remove("UPDATED_TS")
+df_col_list.remove("UPDATED_BY")
+
+st.dataframe(df_open_requests, hide_index=True,column_order=df_col_list)

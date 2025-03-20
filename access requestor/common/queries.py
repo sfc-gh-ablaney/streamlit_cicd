@@ -8,7 +8,7 @@ def get_user():
         try:
             user = st.user.user_name
         except:
-            user = 'local dev'
+            user = 'ABLANEY'
     return user
 
 @st.cache_data
