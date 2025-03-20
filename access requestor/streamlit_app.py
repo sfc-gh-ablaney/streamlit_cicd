@@ -52,7 +52,7 @@ def email_requestor():
             'Access to Snowflake Requested',
             'Please log in here to review access request to Snowflake'
 )           ;  """
-
+        result = session.sql(send_email_sql).collect()
     except Exception as e:
         st.sidebar.error("Sorry, An error occcured in email_requestor(): " + str(e))
 
