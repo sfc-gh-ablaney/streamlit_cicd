@@ -112,7 +112,7 @@ submit = st.button('Submit')
 
 if submit:
     update_decision(session, user, sf_database, sf_schema, filtered_df.iloc[0]["ID"], decision)
-    if decision == 'Approve' and filtered_df.iloc[0]["REQUESTED_TIME_PERIOD_MINS"] == None:
+    if decision == 'Approve' and filtered_df.iloc[0]["REQUESTED_TIME_PERIOD_MINS"] != None:
         grant_access(session, sf_database, sf_schema, filtered_df.iloc[0]["ID"])
     st.rerun()
      
