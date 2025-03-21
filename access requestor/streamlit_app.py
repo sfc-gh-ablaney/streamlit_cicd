@@ -102,13 +102,13 @@ if on:
     col1, col2 = st.columns(2)
     with col1:
         start_dt = st.date_input('Enter Start date:', value='today')
-        end_dt = st.date_input('Enter End date:', value='today')
+        end_dt = st.date_input('Enter End date:', value='today', step= 1)
     with col2:
         start_ts = st.time_input('Enter Start time:', value='now')
-        end_ts = st.time_input('Enter End time:', value='now')
+        end_ts = st.time_input('Enter End time:', value='now', step = 1)
 else:
     st.write('minutes')
-    mins_requested = st.number_input("Time Length Requested (minutes)",5,180, step=10, value=60)
+    mins_requested = st.number_input("Time Length Requested (minutes)",1,180, step=1, value=1)
 
 
 
