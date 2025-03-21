@@ -19,3 +19,13 @@ def get_access_roles(_session, database, schema):
         return table_meta_df
     except Exception as e:
         st.sidebar.error("Sorry, An error occcured in get_access_roles(): " + str(e))
+
+
+def get_requests(_session, database, schema):
+    try:
+        table_requests_sql = f"""SELECT * FROM {database}.{schema}.ST_AR_ACCESS_REQUEST_LOG 
+                            ORDER BY CREATED_TS DESC"""
+        table_requests_df = _session.sql(table_requests_sql).to_pandas()
+        return table_requests_df
+    except Exception as e:
+        st.sidebar.error("Sorry, An error occcured in get_access_roles(): " + str(e))

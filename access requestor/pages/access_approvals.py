@@ -5,7 +5,9 @@ from snowflake.snowpark.context import get_active_session
 import toml
 from snowflake.snowpark.session import Session
 
-from common.queries import get_user, get_access_roles
+from common.queries import get_user, get_access_roles, get_requests
+
+
 
 st.set_page_config(page_title="Access Requestor", page_icon="📋", layout="wide")
 
@@ -64,7 +66,7 @@ except Exception as e:
         st.error("Connection Failed.  Please try again! The pages will not work unless a successfull connection is made" + '\n' + '\n' + "error: " + str(e))
 
 
-
+user = get_user()
 
 sf_database = session.get_current_database()
 sf_schema = session.get_current_schema()
@@ -72,9 +74,6 @@ sf_schema = session.get_current_schema()
 ##add some markdown to the page with a desc
 st.header("Access Approvals")
 st.write('Please select the row you want to approve/decline:')
-user = get_user()
-
-
 
 df_open_requests = get_open_requests(session, sf_database, sf_schema)
 
@@ -113,7 +112,19 @@ submit = st.button('Submit')
 
 if submit:
     update_decision(session, user, sf_database, sf_schema, filtered_df.iloc[0]["ID"], decision)
-    if decision == 'Approve':
+    if decision == 'Approve' and filtered_df.iloc[0]["REQUESTED_TIME_PERIOD_MINS"] == None:
         grant_access(session, sf_database, sf_schema, filtered_df.iloc[0]["ID"])
-    # st.rerun()
+    st.rerun()
      
+
+st.subheader('List of all requests')
+
+
+
+df_requests = get_requests(session, sf_database,sf_schema)
+event = st.dataframe(
+        df_requests,
+        use_container_width=True,
+        hide_index=True,
+        column_order=df_col_list
+    )

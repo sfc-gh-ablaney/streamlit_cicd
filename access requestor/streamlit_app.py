@@ -4,6 +4,7 @@ import snowflake.snowpark
 from snowflake.snowpark.context import get_active_session
 import toml
 from snowflake.snowpark.session import Session
+import datetime as dt
 
 from common.queries import get_user, get_access_roles
 
@@ -21,7 +22,7 @@ def init_connection():
 
 
 
-def insert_request(session, database, schema, user, role_requested, mins_requested, request_reason):
+def insert_request_mins(session, database, schema, user, role_requested, mins_requested, request_reason):
     try:
         insert_request_sql = f"""INSERT INTO {database}.{schema}.ST_AR_ACCESS_REQUEST_LOG 
                     (REQUESTOR_USER_NAME, REQUESTED_ROLE_NAME, ROLE_REQUESTED_REASON, REQUESTED_TIME_PERIOD_MINS, CREATED_BY)
@@ -29,6 +30,20 @@ def insert_request(session, database, schema, user, role_requested, mins_request
                     ('{user}', '{role_requested}', '{request_reason}', {mins_requested}, '{user}');"""
         result = session.sql(insert_request_sql).collect()
         # return result
+    except Exception as e:
+        st.sidebar.error("Sorry, An error occcured in insert_request(): " + str(e))
+
+def insert_request_dates(session, database, schema, user, role_requested, start_dt, start_ts, end_dt, end_ts, request_reason):
+    try:
+        start_datetime = dt.datetime.combine(start_dt, start_ts)
+        end_datetime = dt.datetime.combine(end_dt, end_ts)
+        
+        insert_request_sql = f"""INSERT INTO {database}.{schema}.ST_AR_ACCESS_REQUEST_LOG 
+                    (REQUESTOR_USER_NAME, REQUESTED_ROLE_NAME, ROLE_REQUESTED_REASON, REQUESTED_START_DT, REQUESTED_END_DT, CREATED_BY)
+                        VALUES
+                    ('{user}', '{role_requested}', '{request_reason}', '{start_datetime}','{end_datetime}' , '{user}');"""
+        result = session.sql(insert_request_sql).collect()
+        return result
     except Exception as e:
         st.sidebar.error("Sorry, An error occcured in insert_request(): " + str(e))
 
@@ -79,14 +94,36 @@ st.write("Request for User: " +user)
 df_roles = get_access_roles(session, sf_database, sf_schema)
 
 role_requested = st.selectbox('Role Requested', df_roles["ROLE_NAME"])
-mins_requested = st.number_input("Time Length Requested (minutes)",5,120, step=5, value=60)
+
+on = st.toggle("Access Type")
+
+if on:
+    st.write('dates')
+    col1, col2 = st.columns(2)
+    with col1:
+        start_dt = st.date_input('Enter Start date:', value='today')
+        end_dt = st.date_input('Enter End date:', value='today')
+    with col2:
+        start_ts = st.time_input('Enter Start time:', value='now')
+        end_ts = st.time_input('Enter End time:', value='now')
+else:
+    st.write('minutes')
+    mins_requested = st.number_input("Time Length Requested (minutes)",5,180, step=10, value=60)
+
+
+
+
+
 request_reason = st.text_area('Enter request reason')
 submit_request = st.button('Submit Request')
 
 if submit_request:
-     insert_request(session, sf_database, sf_schema, user, role_requested, mins_requested, request_reason)
-     st.success('Request Submitted')
-     email_requestor()
+    if on:
+        insert_request_dates(session, sf_database, sf_schema, user, role_requested, start_dt, start_ts, end_dt, end_ts, request_reason)
+    else:
+        insert_request_mins(session, sf_database, sf_schema, user, role_requested, mins_requested, request_reason)
+    st.success('Request Submitted')
+    # email_requestor()
 
 st.subheader('Requests from user - last 30 days')
 df_open_requests = get_open_requests_for_user(session, sf_database, sf_schema, user)
