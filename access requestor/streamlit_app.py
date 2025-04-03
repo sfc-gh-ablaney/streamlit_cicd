@@ -128,7 +128,7 @@ if submit_request:
         insert_request_mins(session, sf_database, sf_schema, user, role_requested, mins_requested, request_reason)
         st.success('Request Submitted')
     
-    # email_requestor()
+    email_requestor()
 
 st.subheader('Requests from user - last 30 days')
 df_open_requests = get_open_requests_for_user(session, sf_database, sf_schema, user)
