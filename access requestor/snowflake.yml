@@ -15,3 +15,4 @@ entities:
       - environment.yml
       - pages/access_approvals.py
       - pages/info.py
+      - pages/audit.py

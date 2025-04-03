@@ -5,6 +5,7 @@ from snowflake.snowpark.context import get_active_session
 import toml
 from snowflake.snowpark.session import Session
 import datetime as dt
+from datetime import timedelta
 
 from common.queries import get_user, get_access_roles
 
@@ -82,9 +83,6 @@ except Exception as e:
 sf_database = session.get_current_database()
 sf_schema = session.get_current_schema()
 
-# sf_database
-# sf_schema
-
 ##add some markdown to the page with a desc
 st.header("Access Requestor")
 st.write('Please select role you require temporary access to:')
@@ -112,18 +110,25 @@ else:
 
 
 
-
-
 request_reason = st.text_area('Enter request reason')
 submit_request = st.button('Submit Request')
 
 if submit_request:
     if on:
-        insert_request_dates(session, sf_database, sf_schema, user, role_requested, start_dt, start_ts, end_dt, end_ts, request_reason)
+        start_dt_ts = dt.datetime.combine(start_dt, start_ts) 
+        end_dt_ts = dt.datetime.combine(end_dt, end_ts) 
+        if start_dt_ts <= dt.datetime.now() + timedelta(minutes = 5):
+            st.error('request is in the past or less than in 5 minsutes time')
+        elif end_dt_ts <= start_dt_ts:
+            st.error('end time is before the start time')
+        else:
+            insert_request_dates(session, sf_database, sf_schema, user, role_requested, start_dt, start_ts, end_dt, end_ts, request_reason)
+            st.success('Request Submitted')
     else:
         insert_request_mins(session, sf_database, sf_schema, user, role_requested, mins_requested, request_reason)
-    st.success('Request Submitted')
-    email_requestor()
+        st.success('Request Submitted')
+    
+    # email_requestor()
 
 st.subheader('Requests from user - last 30 days')
 df_open_requests = get_open_requests_for_user(session, sf_database, sf_schema, user)

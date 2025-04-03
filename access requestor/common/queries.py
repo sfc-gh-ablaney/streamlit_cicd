@@ -29,3 +29,12 @@ def get_requests(_session, database, schema):
         return table_requests_df
     except Exception as e:
         st.sidebar.error("Sorry, An error occcured in get_access_roles(): " + str(e))
+
+def get_user_grants(_session, user):
+    try:
+        show_grants_sql = f"""show grants to user {user}"""
+        user_grants_df =  _session.sql(show_grants_sql).collect()
+        return user_grants_df
+
+    except Exception as e:
+        st.sidebar.error("Sorry, An error occcured in get_user_grants(): " + str(e))

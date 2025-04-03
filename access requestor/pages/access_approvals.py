@@ -4,8 +4,10 @@ import snowflake.snowpark
 from snowflake.snowpark.context import get_active_session
 import toml
 from snowflake.snowpark.session import Session
-
-from common.queries import get_user, get_access_roles, get_requests
+import pandas as pd
+import datetime as dt
+from datetime import timedelta
+from common.queries import get_user, get_access_roles, get_requests, get_user_grants
 
 
 
@@ -48,14 +50,59 @@ def update_decision(_session, user, database, schema, id, decision):
     except Exception as e:
         st.sidebar.error("Sorry, An error occcured in get_access_roles(): " + str(e))
 
-def grant_access(_session, database, schema, id):
+
+
+def grant_access(_session, database, schema, id, mins):
     try:
         call_proc_sql = f"""CALL {database}.{schema}.ACCESS_GRANTER({id});"""
         result = _session.sql(call_proc_sql).collect()
 
+        st.session_state.end_task_ts = dt.datetime.now() + timedelta(minutes = mins)
         return result
     except Exception as e:
         st.sidebar.error("Sorry, An error occcured in grant_access(): " + str(e))
+
+
+        
+
+def datetime_to_cron(dt):
+
+  return f"""{dt.minute} {dt.hour} {dt.day} {dt.strftime('%b')} *"""
+
+def create_grant_task(_session, database, schema, row):
+    try:
+        call_proc_stmt_sql = f"""CALL {database}.{schema}.ACCESS_GRANTER({row["ID"]}) ;"""
+        start_cron = datetime_to_cron(row["REQUESTED_START_DT"])
+        task_name = f"""TSK_AR_GRANT_{row["REQUESTED_ROLE_NAME"]}_{row["REQUESTOR_USER_NAME"]}"""
+        create_task_sql = f"""CREATE OR REPLACE TASK {task_name} WAREHOUSE = SNOW_WH SCHEDULE = 'USING CRON {start_cron} Pacific/Auckland' AS {call_proc_stmt_sql};"""
+        result = _session.sql(create_task_sql).collect()
+        resume_task_sql = f""" ALTER TASK {task_name} RESUME; """
+        result = _session.sql(resume_task_sql).collect()
+        return result
+    except Exception as e:
+        st.sidebar.error("Sorry, An error occcured in create_grant_task(): " + str(e))
+
+def create_revoke_task(_session, database, schema, row, type):
+    try:
+        call_proc_stmt_sql = f"""CALL {database}.{schema}.ACCESS_REVOKER({row["ID"]}) ;"""
+
+        # if start end
+        if type == 'ts':
+            end_cron = datetime_to_cron(row["REQUESTED_END_DT"])
+
+        # else if mins
+        elif type == 'mins':
+            end_cron = datetime_to_cron(st.session_state.end_task_ts)
+
+
+        task_name = f"""TSK_AR_REVOKE_{row["REQUESTED_ROLE_NAME"]}_{row["REQUESTOR_USER_NAME"]}"""
+        create_task_sql = f"""CREATE OR REPLACE TASK {task_name} WAREHOUSE = SNOW_WH SCHEDULE = 'USING CRON {end_cron} Pacific/Auckland' AS {call_proc_stmt_sql};"""
+        result = _session.sql(create_task_sql).collect()
+        resume_task_sql = f""" ALTER TASK {task_name} RESUME; """;
+        result = _session.sql(resume_task_sql).collect()
+        return result
+    except Exception as e:
+        st.sidebar.error("Sorry, An error occcured in create_revoke_task(): " + str(e))
 
 
 ##snowflake connection info. This will get read in from the values submitted on the homepage
@@ -68,10 +115,15 @@ except Exception as e:
 
 user = get_user()
 
+if 'warehouse' not in st.session_state:
+    st.session_state.warehouse = 'SNOW_WH'
+
+st.session_state.end_task_ts = ''
+
 sf_database = session.get_current_database()
 sf_schema = session.get_current_schema()
 
-##add some markdown to the page with a desc
+
 st.header("Access Approvals")
 st.write('Please select the row you want to approve/decline:')
 
@@ -95,15 +147,9 @@ event = st.dataframe(
         column_order=df_col_list
     )
 
-# st.header("Selected requests")
 request = event.selection.rows
 filtered_df = df_open_requests.iloc[request]
-# st.dataframe(
-#     filtered_df,
-#     hide_index=True,
-#     use_container_width=True,
-#     column_order=df_col_list,
-# )
+
 
 options = ["Approve", "Decline"]
 decision = st.selectbox('Decision', options)
@@ -112,14 +158,20 @@ submit = st.button('Submit')
 
 if submit:
     update_decision(session, user, sf_database, sf_schema, filtered_df.iloc[0]["ID"], decision)
-    if decision == 'Approve' and filtered_df.iloc[0]["REQUESTED_TIME_PERIOD_MINS"] != None:
-        grant_access(session, sf_database, sf_schema, filtered_df.iloc[0]["ID"])
+    # minute based access
+    if decision == 'Approve' and not pd.isna(filtered_df.iloc[0]["REQUESTED_TIME_PERIOD_MINS"]):
+        result = grant_access(session, sf_database, sf_schema, filtered_df.iloc[0]["ID"],int(filtered_df.iloc[0]["REQUESTED_TIME_PERIOD_MINS"]))
+        result_rv = create_revoke_task(session, sf_database, sf_schema, filtered_df.iloc[0], 'mins')
+        st.write('access granted')
+    # start end date access
+    elif decision == 'Approve' and not pd.isna(filtered_df.iloc[0]["REQUESTED_START_DT"]):
+        result_cr = create_grant_task(session, sf_database, sf_schema, filtered_df.iloc[0])
+        result_rv = create_revoke_task(session, sf_database, sf_schema, filtered_df.iloc[0], 'ts')
+        
     st.rerun()
-     
+  
 
 st.subheader('List of all requests')
-
-
 
 df_requests = get_requests(session, sf_database,sf_schema)
 event = st.dataframe(
@@ -128,3 +180,18 @@ event = st.dataframe(
         hide_index=True,
         column_order=df_col_list
     )
+if not filtered_df.empty :
+    df_user_grants = get_user_grants(session, filtered_df.iloc[0]["REQUESTOR_USER_NAME"])
+    st.subheader('Users current grants:')
+    df_user_grants
+
+    # df_open_requests
+
+# change task name to be unique - Timestamp
+
+# pick user - based off log table
+# show grants requested
+# highlight grants open
+# show user's current grants
+
+# add check for approval if start end date have passed
