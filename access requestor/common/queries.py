@@ -36,11 +36,26 @@ def get_user_grants(_session, user):
         # show_grants_sql = f"""show grants to user {user}"""
         # user_grants_df =  _session.sql(show_grants_sql).collect()
         # return user_grants_df
-        show_grants_sql = f"""EXECUTE TASK TSK_SHOW_GRANTS; """
-        user_grants_df =  _session.sql(show_grants_sql).collect()
+
+
+        # create task
+        create_task_sql = f"""CREATE OR REPLACE TASK TSK_SHOW_GRANTS_{user} 
+                            WAREHOUSE = SNOW_WH 
+                            AS CALL SHOW_GRANTS_T('{user}'); """
+        _session.sql(create_task_sql).collect()
+        # execute task
+        execute_task_sql = f"""EXECUTE TASK TSK_SHOW_GRANTS_{user}; """
+        _session.sql(execute_task_sql).collect()
+        # wait
         time.sleep(5)  # Wait 5 seconds
+        # select from table
         table_meta_sql = f"""SELECT * FROM DB_SHOW_GRANTS"""
         table_meta_df = _session.sql(table_meta_sql).to_pandas()
+        # drop task
+        # drop proc
+        
+        
+        
         return table_meta_df
 
     except Exception as e:
