@@ -121,17 +121,18 @@ st.dataframe(df_filter.style.apply(highlighter, axis=1), use_container_width=Tru
         column_order=df_col_list)
 
 
-# df_user_grants = get_user_grants(session, user_selected)
-# d = pd.DataFrame(df_user_grants)
+df_user_grants = get_user_grants(session, user_selected)
+d = pd.DataFrame(df_user_grants)
 
 
-# df_ = d[d['role'].isin(df_filter['REQUESTED_ROLE_NAME'])]
-# slice_ = pd.IndexSlice[df_.index, df_.columns]
-# s = d.style.set_properties(**{'background-color': 'lightgreen'}, subset=slice_)
+df_ = d[d['role'].isin(df_filter['REQUESTED_ROLE_NAME'])]
+slice_ = pd.IndexSlice[df_.index, df_.columns]
+s = d.style.set_properties(**{'background-color': 'lightgreen'}, subset=slice_)
 
-# st.subheader('Current grants for user')
-# st.dataframe(s, use_container_width=True, hide_index=True)
+st.subheader('Current grants for user')
+st.dataframe(s, use_container_width=True, hide_index=True)
 
-
-
+refresh = st.button('refresh')
+if refresh:
+    df_user_grants = get_user_grants(session, user_selected)
 

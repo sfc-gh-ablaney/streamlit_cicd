@@ -1,4 +1,5 @@
 import streamlit as st
+import time
 
 @st.cache_resource
 def get_user():
@@ -32,9 +33,15 @@ def get_requests(_session, database, schema):
 
 def get_user_grants(_session, user):
     try:
-        show_grants_sql = f"""show grants to user {user}"""
+        # show_grants_sql = f"""show grants to user {user}"""
+        # user_grants_df =  _session.sql(show_grants_sql).collect()
+        # return user_grants_df
+        show_grants_sql = f"""EXECUTE TASK TSK_SHOW_GRANTS; """
         user_grants_df =  _session.sql(show_grants_sql).collect()
-        return user_grants_df
+        time.sleep(5)  # Wait 5 seconds
+        table_meta_sql = f"""SELECT * FROM DB_SHOW_GRANTS"""
+        table_meta_df = _session.sql(table_meta_sql).to_pandas()
+        return table_meta_df
 
     except Exception as e:
         st.sidebar.error("Sorry, An error occcured in get_user_grants(): " + str(e))
