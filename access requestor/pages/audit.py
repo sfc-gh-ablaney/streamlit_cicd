@@ -91,18 +91,6 @@ df_ = df_filter[df_filter['STATUS'] == 'ACTIVE']
 slice_ = pd.IndexSlice[df_.index, df_.columns]
 
 st.subheader('Requests for user')
-# st.dataframe(
-#         df_filter.style.set_properties(**{'background-color': 'green'}, subset=slice_),
-#         use_container_width=True,
-#         hide_index=True,
-#         column_order=df_col_list
-#     )
-
-# def active_highlighter(series):
-#     green = 'background-color: lightgreen'
-#     blue = 'background-color: blue'
-#     red = 'background-color: red'
-#     return [green if value = 'ACTIVE' else blue if value = 'OPEN' else red for value in series]
 
 def highlighter(row):
 

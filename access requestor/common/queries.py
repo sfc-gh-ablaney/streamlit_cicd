@@ -29,7 +29,7 @@ def get_requests(_session, database, schema):
         table_requests_df = _session.sql(table_requests_sql).to_pandas()
         return table_requests_df
     except Exception as e:
-        st.sidebar.error("Sorry, An error occcured in get_access_roles(): " + str(e))
+        st.sidebar.error("Sorry, An error occcured in get_requests(): " + str(e))
 
 def get_user_grants(_session, user):
     try:
@@ -49,10 +49,15 @@ def get_user_grants(_session, user):
         # wait
         time.sleep(5)  # Wait 5 seconds
         # select from table
-        table_meta_sql = f"""SELECT * FROM DB_SHOW_GRANTS"""
+        table_meta_sql = f"""SELECT * FROM DB_SHOW_GRANTS_{user}"""
         table_meta_df = _session.sql(table_meta_sql).to_pandas()
         # drop task
-        # drop proc
+        drop_task_sql = f"""DROP TASK IF EXISTS TSK_SHOW_GRANTS_{user} ; """
+        _session.sql(drop_task_sql).collect()
+        # drop table
+        drop_table_sql = f"""DROP TABLE IF EXISTS DB_SHOW_GRANTS_{user}; """
+        _session.sql(drop_table_sql).collect()
+        
         
         
         
