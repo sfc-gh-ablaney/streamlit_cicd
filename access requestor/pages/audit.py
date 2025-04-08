@@ -102,7 +102,7 @@ def highlighter(row):
         return  ['background-color: lightblue'] * len(row)
 
 
-sl = ['STATUS']    
+# sl = ['STATUS']    
 
 st.dataframe(df_filter.style.apply(highlighter, axis=1), use_container_width=True,
         hide_index=True,

@@ -74,16 +74,17 @@ def email_approver(_session, df_approvers):
     try:
         # email_list = ''
         for index in range(len(df_approvers)):
-            approver = df_approvers.iloc[index]
-            desc_user_sql = F"""desc user {approver};"""
-            get_email_sql = F"""SELECT "value" FROM TABLE(RESULT_SCAN(LAST_QUERY_ID()) )WHERE "property" = 'EMAIL';"""
-            _session.sql(desc_user_sql).collect()
-            email_df =  _session.sql(get_email_sql).to_pandas() 
-            e= email_df["value"].iloc[0]
+            approver_email = df_approvers.iloc[index]
+            # approver_email
+            # desc_user_sql = F"""desc user {approver};"""
+            # get_email_sql = F"""SELECT "value" FROM TABLE(RESULT_SCAN(LAST_QUERY_ID()) )WHERE "property" = 'EMAIL';"""
+            # _session.sql(desc_user_sql).collect()
+            # email_df =  _session.sql(get_email_sql).to_pandas() 
+            # e= email_df["value"].iloc[0]
             
             send_email_sql = F"""   CALL SYSTEM$SEND_EMAIL(
                 'approver_email_int',
-                '{e}',
+                '{approver_email}',
                 'Access to Snowflake Requested',
                 'Please log into the app to review access request to Snowflake'
     )           ;  """
@@ -124,7 +125,7 @@ st.write('Number of approvers required '+str(approvals_needed) )
 
 df_approvers = get_approvers(session, sf_database, sf_schema, role_requested)
 
-st.dataframe(df_approvers['APPROVER_NAME'], hide_index=True)
+# st.dataframe(df_approvers['APPROVER_NAME'], hide_index=True)
 
 # toggle for access type - minute or date/time based
 access_type = st.toggle("Access Type")
@@ -161,11 +162,11 @@ if submit_request:
         else:
             insert_request_dates(session, sf_database, sf_schema, user, role_requested, start_dt, start_ts, end_dt, end_ts, request_reason)
             st.success('Request Submitted')
-            email_approver(session, df_approvers['APPROVER_NAME'])
+            email_approver(session, df_approvers['APPROVER_EMAIL'])
     else:
         insert_request_mins(session, sf_database, sf_schema, user, role_requested, mins_requested, request_reason)
         st.success('Request Submitted')
-        email_approver(session, df_approvers['APPROVER_NAME'])
+        email_approver(session, df_approvers['APPROVER_EMAIL'])
     
     
 # table of requests for user in last 30 days

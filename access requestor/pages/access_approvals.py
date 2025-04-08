@@ -24,10 +24,12 @@ def init_connection():
     return session
 
 
-def get_open_requests(_session, database, schema):
+def get_open_requests(_session, database, schema, user):
     try:
-        table_meta_sql = f"""SELECT * FROM {database}.{schema}.ST_AR_ACCESS_REQUEST_LOG 
-                            WHERE REQUEST_RESULT IS  NULL"""
+        table_meta_sql = f"""SELECT L.* FROM {database}.{schema}.ST_AR_ACCESS_REQUEST_LOG L
+                            JOIN ST_AR_ROLE_APPROVERS A ON L.REQUESTED_ROLE_NAME = A.ROLE_NAME
+                            WHERE L.REQUEST_RESULT IS  NULL
+                            AND A.APPROVER_NAME = '{user}' ;"""
         
         table_meta_df = _session.sql(table_meta_sql).to_pandas()
         return table_meta_df
@@ -94,7 +96,6 @@ def create_revoke_task(_session, database, schema, row, type):
         elif type == 'mins':
             end_cron = datetime_to_cron(st.session_state.end_task_ts)
 
-
         task_name = f"""TSK_AR_REVOKE_{row["REQUESTED_ROLE_NAME"]}_{row["REQUESTOR_USER_NAME"]}"""
         create_task_sql = f"""CREATE OR REPLACE TASK {task_name} WAREHOUSE = SNOW_WH SCHEDULE = 'USING CRON {end_cron} Pacific/Auckland' AS {call_proc_stmt_sql};"""
         result = _session.sql(create_task_sql).collect()
@@ -127,7 +128,7 @@ sf_schema = session.get_current_schema()
 st.header("Access Approvals")
 st.write('Please select the row you want to approve/decline:')
 
-df_open_requests = get_open_requests(session, sf_database, sf_schema)
+df_open_requests = get_open_requests(session, sf_database, sf_schema, user)
 
 df_col_list = list(df_open_requests)
 df_col_list.remove("ID")
@@ -171,19 +172,19 @@ if submit:
     st.rerun()
   
 
-st.subheader('List of all requests')
+# st.subheader('List of all requests')
 
-df_requests = get_requests(session, sf_database,sf_schema)
-event = st.dataframe(
-        df_requests,
-        use_container_width=True,
-        hide_index=True,
-        column_order=df_col_list
-    )
+# df_requests = get_requests(session, sf_database,sf_schema)
+# event = st.dataframe(
+#         df_requests,
+#         use_container_width=True,
+#         hide_index=True,
+#         column_order=df_col_list
+#     )
 if not filtered_df.empty :
     df_user_grants = get_user_grants(session, filtered_df.iloc[0]["REQUESTOR_USER_NAME"])
     st.subheader('Users current grants:')
-    df_user_grants
+    st.dataframe(df_user_grants, hide_index=True)
 
     # df_open_requests
 
